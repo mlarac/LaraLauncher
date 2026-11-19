@@ -1,10 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using LaraLauncher.App.Input;
 using LaraLauncher.App.ViewModels;
+using LaraLauncher.Core.Interfaces;
 using LaraLauncher.Core.Models;
 using LaraLauncher.Core.Services;
 
@@ -16,22 +16,33 @@ public partial class MainWindow : Window
 
     private readonly MainViewModel _viewModel;
     private readonly WpfInputRouter _inputRouter;
+    private readonly IAppLauncherService _appLauncherService;
+
     private bool _isFullscreen = true;
     private int _lastFocusedTileIndex;
     private int _focusedSidebarIndex;
 
-    public MainWindow(MainViewModel viewModel, WpfInputRouter inputRouter)
+    public MainWindow(
+        MainViewModel viewModel,
+        WpfInputRouter inputRouter,
+        IAppLauncherService appLauncherService)
     {
         InitializeComponent();
 
         _viewModel = viewModel;
         _inputRouter = inputRouter;
+        _appLauncherService = appLauncherService;
         DataContext = _viewModel;
 
         _inputRouter.ActionReceived += OnNavigationActionReceived;
+        _appLauncherService.ApplicationLaunched += OnExternalAppLaunched;
+        _appLauncherService.ApplicationExited += OnExternalAppExited;
+
         Closed += (_, _) =>
         {
             _inputRouter.ActionReceived -= OnNavigationActionReceived;
+            _appLauncherService.ApplicationLaunched -= OnExternalAppLaunched;
+            _appLauncherService.ApplicationExited -= OnExternalAppExited;
             _inputRouter.StopExternalProviders();
         };
     }
@@ -56,17 +67,51 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        await _viewModel.InitializeAsync();
         _inputRouter.StartExternalProviders();
 
-        // Start with focus cleanly on the first tile (Roku-style ready to launch).
+        await Dispatcher.InvokeAsync(FocusHomePrimaryControl);
+    }
+
+    private void Window_Activated(object? sender, EventArgs e)
+    {
+        _inputRouter.StartExternalProviders();
+    }
+
+    private void Window_Deactivated(object? sender, EventArgs e)
+    {
+        _inputRouter.StopExternalProviders();
+    }
+
+    private void OnExternalAppLaunched(object? sender, AppTile tile)
+    {
         Dispatcher.BeginInvoke(() =>
         {
-            if (!FocusTileAt(0))
+            _inputRouter.StopExternalProviders();
+        });
+    }
+
+    private void OnExternalAppExited(object? sender, AppTile tile)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (WindowState == WindowState.Minimized)
             {
-                FocusSidebarAt(0);
+                WindowState = _isFullscreen ? WindowState.Maximized : WindowState.Normal;
             }
+
+            Activate();
+            Focus();
+            _inputRouter.StartExternalProviders();
+
+            if (_viewModel.IsHomeGridVisible)
+            {
+                FocusTileAt(_lastFocusedTileIndex);
+            }
+
+            _viewModel.ShowToast($"De vuelta en LaraLauncher ({tile.Name} cerrado).");
         });
     }
 
@@ -107,7 +152,7 @@ public partial class MainWindow : Window
         if (action == NavigationAction.Home)
         {
             _viewModel.SelectSection(SidebarSection.Home);
-            FocusTileAt(_lastFocusedTileIndex);
+            Dispatcher.BeginInvoke(FocusHomePrimaryControl);
             return;
         }
 
@@ -115,9 +160,13 @@ public partial class MainWindow : Window
         {
             HandleSidebarNavigation(action);
         }
-        else if (_viewModel.IsHomeSection)
+        else if (_viewModel.IsHomeGridVisible)
         {
             HandleTileGridNavigation(action);
+        }
+        else if (_viewModel.IsHomeEmptyVisible)
+        {
+            HandleEmptyStateNavigation(action);
         }
         else if (action is NavigationAction.Left or NavigationAction.Back)
         {
@@ -170,9 +219,9 @@ public partial class MainWindow : Window
                 break;
 
             case NavigationAction.Right:
-                if (_viewModel.IsHomeSection && _viewModel.AppTiles.Count > 0)
+                if (_viewModel.IsHomeSection)
                 {
-                    FocusTileAt(_lastFocusedTileIndex);
+                    FocusHomePrimaryControl();
                 }
                 break;
 
@@ -182,15 +231,52 @@ public partial class MainWindow : Window
                 break;
 
             case NavigationAction.Back:
-                if (_viewModel.IsHomeSection && _viewModel.AppTiles.Count > 0)
+                if (_viewModel.IsHomeSection)
                 {
-                    FocusTileAt(_lastFocusedTileIndex);
+                    FocusHomePrimaryControl();
                 }
                 break;
         }
     }
 
-    private void HandleTileGridNavigation(NavigationAction action)
+    private async void HandleEmptyStateNavigation(NavigationAction action)
+    {
+        switch (action)
+        {
+            case NavigationAction.Left:
+                if (EmptyManageAppsButton.IsKeyboardFocused)
+                {
+                    EmptyAddStarterButton.Focus();
+                }
+                else
+                {
+                    FocusSidebarForActiveSection();
+                }
+                break;
+
+            case NavigationAction.Right:
+                EmptyManageAppsButton.Focus();
+                break;
+
+            case NavigationAction.Back:
+                FocusSidebarForActiveSection();
+                break;
+
+            case NavigationAction.Select:
+                if (EmptyManageAppsButton.IsKeyboardFocused)
+                {
+                    _viewModel.OpenManageApps();
+                    FocusSidebarForActiveSection();
+                }
+                else
+                {
+                    await AddStarterAppsAndFocusGridAsync();
+                }
+                break;
+        }
+    }
+
+    private async void HandleTileGridNavigation(NavigationAction action)
     {
         int tileCount = _viewModel.AppTiles.Count;
 
@@ -218,7 +304,7 @@ public partial class MainWindow : Window
             case NavigationAction.Select:
                 if (_lastFocusedTileIndex >= 0 && _lastFocusedTileIndex < tileCount)
                 {
-                    _viewModel.LaunchTile(_viewModel.AppTiles[_lastFocusedTileIndex]);
+                    await _viewModel.LaunchTileAsync(_viewModel.AppTiles[_lastFocusedTileIndex]);
                 }
                 break;
 
@@ -232,6 +318,28 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task AddStarterAppsAndFocusGridAsync()
+    {
+        await _viewModel.AddStarterAppsAsync();
+        await Dispatcher.InvokeAsync(() => FocusTileAt(0));
+    }
+
+    private void FocusHomePrimaryControl()
+    {
+        if (_viewModel.IsHomeGridVisible && FocusTileAt(_lastFocusedTileIndex))
+        {
+            return;
+        }
+
+        if (_viewModel.IsHomeEmptyVisible)
+        {
+            EmptyAddStarterButton.Focus();
+            return;
+        }
+
+        FocusSidebarForActiveSection();
+    }
+
     private void ActivateSidebarSection(SidebarSection section)
     {
         _viewModel.SelectSection(section);
@@ -242,9 +350,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (section == SidebarSection.Home && _viewModel.AppTiles.Count > 0)
+        if (section == SidebarSection.Home)
         {
-            Dispatcher.BeginInvoke(() => FocusTileAt(_lastFocusedTileIndex));
+            Dispatcher.BeginInvoke(FocusHomePrimaryControl);
         }
     }
 
@@ -290,6 +398,15 @@ public partial class MainWindow : Window
 
             button.BringIntoView();
         }
+    }
+
+    private async void EmptyAddStarterButton_Click(object sender, RoutedEventArgs e)
+        => await AddStarterAppsAndFocusGridAsync();
+
+    private void EmptyManageAppsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenManageApps();
+        FocusSidebarForActiveSection();
     }
 
     private void CancelExitButton_Click(object sender, RoutedEventArgs e) => CloseExitDialog();

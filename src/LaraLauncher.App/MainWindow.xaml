@@ -13,7 +13,9 @@
         Background="{StaticResource RokuMainBackgroundBrush}"
         Foreground="{StaticResource RokuTextPrimaryBrush}"
         PreviewKeyDown="Window_PreviewKeyDown"
-        Loaded="Window_Loaded">
+        Loaded="Window_Loaded"
+        Activated="Window_Activated"
+        Deactivated="Window_Deactivated">
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -156,7 +158,7 @@
             <!-- Home Section: Roku Tile Grid -->
             <ScrollViewer x:Name="HomeScrollViewer"
                           Grid.Row="1"
-                          Visibility="{Binding IsHomeSection, Converter={StaticResource BoolToVisibility}}"
+                          Visibility="{Binding IsHomeGridVisible, Converter={StaticResource BoolToVisibility}}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
                           Focusable="False">
@@ -183,7 +185,7 @@
                                         <RowDefinition Height="44" />
                                     </Grid.RowDefinitions>
 
-                                    <!-- Top Colored Graphic Area -->
+                                    <!-- Top Graphic Area: Extracted PNG Icon or Fallback Glyph -->
                                     <Border Grid.Row="0"
                                             CornerRadius="12,12,0,0"
                                             Background="{Binding AccentHex, Converter={StaticResource HexToBrush}}">
@@ -196,7 +198,17 @@
                                                     </LinearGradientBrush>
                                                 </Border.Background>
                                             </Border>
+
+                                            <Image Source="{Binding IconPath, Converter={StaticResource FilePathToImage}}"
+                                                   Visibility="{Binding IconPath, Converter={StaticResource FileExistsToVisibility}}"
+                                                   Width="64"
+                                                   Height="64"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+
                                             <TextBlock Text="{Binding FallbackGlyph}"
+                                                       Visibility="{Binding IconPath, Converter={StaticResource FileExistsToVisibility}, ConverterParameter=Invert}"
                                                        FontFamily="Segoe MDL2 Assets"
                                                        FontSize="46"
                                                        Foreground="#FFFFFF"
@@ -231,6 +243,47 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+            <!-- Home Empty State (Friendly first-run onboarding) -->
+            <Border x:Name="HomeEmptyState"
+                    Grid.Row="1"
+                    Visibility="{Binding IsHomeEmptyVisible, Converter={StaticResource BoolToVisibility}}"
+                    Background="#1F143B"
+                    BorderBrush="{StaticResource RokuSubtleBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    Padding="42,38"
+                    Margin="12"
+                    VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="&#xE71D;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="44"
+                               Foreground="{StaticResource RokuAccentBrightBrush}"
+                               Margin="0,0,0,14" />
+                    <TextBlock Text="Tu pantalla de inicio está lista"
+                               FontSize="28"
+                               FontWeight="Bold" />
+                    <TextBlock Text="Aún no has agregado aplicaciones a LaraLauncher. Puedes cargar un conjunto básico de Windows para probar el lanzamiento real o ir al gestor de aplicaciones."
+                               FontSize="16"
+                               Foreground="{StaticResource RokuTextMutedBrush}"
+                               TextWrapping="Wrap"
+                               MaxWidth="680"
+                               HorizontalAlignment="Left"
+                               Margin="0,10,0,28" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="EmptyAddStarterButton"
+                                Content="Cargar apps básicas de Windows"
+                                Style="{StaticResource RokuActionButtonStyle}"
+                                Margin="0,0,16,0"
+                                Click="EmptyAddStarterButton_Click" />
+                        <Button x:Name="EmptyManageAppsButton"
+                                Content="Ir a Gestionar Apps"
+                                Style="{StaticResource RokuActionButtonStyle}"
+                                Click="EmptyManageAppsButton_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
             <!-- Weather Placeholder (Phase 4) -->
             <Border Grid.Row="1"

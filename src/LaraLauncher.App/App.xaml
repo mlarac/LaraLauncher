@@ -9,6 +9,8 @@
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
             <converters:HexToBrushConverter x:Key="HexToBrush" />
+            <converters:FilePathToImageConverter x:Key="FilePathToImage" />
+            <converters:FileExistsToVisibilityConverter x:Key="FileExistsToVisibility" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

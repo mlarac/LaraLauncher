@@ -1,6 +1,9 @@
 using System.Windows;
 using LaraLauncher.App.Input;
 using LaraLauncher.App.ViewModels;
+using LaraLauncher.Core.Interfaces;
+using LaraLauncher.Infrastructure.Persistence;
+using LaraLauncher.Infrastructure.Windows;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LaraLauncher.App;
@@ -28,6 +31,10 @@ public partial class App : Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
+        // Persistence & Windows Infrastructure
+        services.AddSingleton<IConfigRepository>(_ => new JsonConfigRepository());
+        services.AddSingleton<IAppLauncherService, WindowsAppLauncherService>();
+
         // Input routing (external IInputProvider implementations such as XInput register here in Phase 5)
         services.AddSingleton<WpfInputRouter>();
 
