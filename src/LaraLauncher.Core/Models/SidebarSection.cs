@@ -6,6 +6,7 @@ namespace LaraLauncher.Core.Models;
 public enum SidebarSection
 {
     Home,
+    WebApps,
     Weather,
     ManageApps,
     Settings,

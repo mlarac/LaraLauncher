@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using LaraLauncher.App.Helpers;
 using LaraLauncher.App.Input;
 using LaraLauncher.App.ViewModels;
 using LaraLauncher.Core.Interfaces;
@@ -130,6 +131,12 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(() => CancelExitButton.Focus());
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        WindowTitleBarTheme.ApplyBlackTitleBar(this);
+    }
+
     public void ApplyWindowMode(bool fullscreen)
     {
         _isFullscreen = fullscreen;
@@ -147,6 +154,7 @@ public partial class MainWindow : Window
             ResizeMode = ResizeMode.CanResize;
             Width = 1280;
             Height = 720;
+            WindowTitleBarTheme.ApplyBlackTitleBar(this);
         }
     }
 
@@ -213,7 +221,7 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
             else if (e.Key == Key.Down &&
-                     (_viewModel.IsManageAppsSection || _viewModel.IsWeatherSection) &&
+                     (_viewModel.IsManageAppsSection || _viewModel.IsWeatherSection || _viewModel.IsWebAppsSection) &&
                      !_viewModel.IsEditTileDialogVisible)
             {
                 _inputRouter.TryRouteKey(e.Key);
@@ -284,6 +292,10 @@ public partial class MainWindow : Window
         else if (_viewModel.IsManageAppsSection)
         {
             AppManagerViewControl.HandleNavigationAction(action);
+        }
+        else if (_viewModel.IsWebAppsSection)
+        {
+            WebAppCreatorViewControl.HandleNavigationAction(action);
         }
         else if (_viewModel.IsWeatherSection)
         {
@@ -552,6 +564,10 @@ public partial class MainWindow : Window
         {
             AppManagerViewControl.FocusPrimaryControl();
         }
+        else if (_viewModel.IsWebAppsSection)
+        {
+            WebAppCreatorViewControl.FocusPrimaryControl();
+        }
         else if (_viewModel.IsWeatherSection)
         {
             WeatherDetailViewControl.FocusPrimaryControl();
@@ -607,6 +623,10 @@ public partial class MainWindow : Window
         else if (section == SidebarSection.ManageApps)
         {
             Dispatcher.BeginInvoke(() => AppManagerViewControl.FocusPrimaryControl());
+        }
+        else if (section == SidebarSection.WebApps)
+        {
+            Dispatcher.BeginInvoke(() => WebAppCreatorViewControl.FocusPrimaryControl());
         }
         else if (section == SidebarSection.Weather)
         {
@@ -734,6 +754,18 @@ public partial class MainWindow : Window
         => await _viewModel.AppManager.RefreshScanAsync(_viewModel.AppTiles);
 
     private void AppManagerView_ExitToSidebarRequested(object? sender, EventArgs e)
+        => FocusSidebarForActiveSection();
+
+    private async void WebAppCreatorView_CreateWebAppRequested(object? sender, EventArgs e)
+    {
+        bool created = await _viewModel.CreateWebAppAsync();
+        if (created)
+        {
+            await Dispatcher.InvokeAsync(() => WebAppCreatorViewControl.FocusPrimaryControl());
+        }
+    }
+
+    private void WebAppCreatorView_ExitToSidebarRequested(object? sender, EventArgs e)
         => FocusSidebarForActiveSection();
 
     private void WeatherDetailView_ExitToSidebarRequested(object? sender, EventArgs e)

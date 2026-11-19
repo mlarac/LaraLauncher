@@ -327,6 +327,14 @@
                                   RefreshRequested="AppManagerView_RefreshRequested"
                                   ExitToSidebarRequested="AppManagerView_ExitToSidebarRequested" />
 
+            <!-- WebApps Creator + 10-Foot Virtual Keyboard Section -->
+            <views:WebAppCreatorView x:Name="WebAppCreatorViewControl"
+                                     Grid.Row="2"
+                                     DataContext="{Binding WebAppCreator}"
+                                     Visibility="{Binding DataContext.IsWebAppsSection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
+                                     CreateWebAppRequested="WebAppCreatorView_CreateWebAppRequested"
+                                     ExitToSidebarRequested="WebAppCreatorView_ExitToSidebarRequested" />
+
             <!-- Weather & 7-Day Forecast Section (Phase 4) -->
             <views:WeatherDetailView x:Name="WeatherDetailViewControl"
                                      Grid.Row="2"

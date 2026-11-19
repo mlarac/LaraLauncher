@@ -9,6 +9,7 @@ using LaraLauncher.Infrastructure.Audio;
 using LaraLauncher.Infrastructure.Input;
 using LaraLauncher.Infrastructure.Persistence;
 using LaraLauncher.Infrastructure.Weather;
+using LaraLauncher.Infrastructure.Web;
 using LaraLauncher.Infrastructure.Windows;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -73,8 +74,9 @@ public partial class App : Application
         services.AddSingleton<IStartupService, WindowsStartupService>();
         services.AddSingleton<ISystemPowerService, WindowsPowerService>();
 
-        // Weather (Open-Meteo + Local Disk Cache Decorator)
+        // Weather (Open-Meteo + Local Disk Cache Decorator) & WebApp Favicons
         services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(10) });
+        services.AddSingleton<IWebAppIconFetcher>(sp => new FaviconFetcherService(sp.GetRequiredService<HttpClient>()));
         services.AddSingleton<IWeatherCacheStore>(_ => new JsonWeatherCacheStore());
         services.AddSingleton<OpenMeteoWeatherService>();
         services.AddSingleton<ILocationSearchService>(sp => sp.GetRequiredService<OpenMeteoWeatherService>());
@@ -89,6 +91,7 @@ public partial class App : Application
 
         // ViewModels
         services.AddSingleton<AppManagerViewModel>();
+        services.AddSingleton<WebAppCreatorViewModel>();
         services.AddSingleton<WeatherViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MainViewModel>();

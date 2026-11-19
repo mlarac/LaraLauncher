@@ -21,6 +21,7 @@ public sealed partial class MainViewModel : ObservableObject
     private PowerActionKind _pendingPowerAction = PowerActionKind.ExitToDesktop;
 
     public AppManagerViewModel AppManager { get; }
+    public WebAppCreatorViewModel WebAppCreator { get; }
     public WeatherViewModel Weather { get; }
     public SettingsViewModel Settings { get; }
     public ObservableCollection<SidebarItemViewModel> SidebarItems { get; }
@@ -103,6 +104,7 @@ public sealed partial class MainViewModel : ObservableObject
     private string _editTileAccentHex = "#5A2EA6";
 
     public bool IsHomeSection => ActiveSection == SidebarSection.Home;
+    public bool IsWebAppsSection => ActiveSection == SidebarSection.WebApps;
     public bool IsWeatherSection => ActiveSection == SidebarSection.Weather;
     public bool IsManageAppsSection => ActiveSection == SidebarSection.ManageApps;
     public bool IsSettingsSection => ActiveSection == SidebarSection.Settings;
@@ -118,6 +120,7 @@ public sealed partial class MainViewModel : ObservableObject
         IAppLauncherService appLauncherService,
         ISystemPowerService powerService,
         AppManagerViewModel appManager,
+        WebAppCreatorViewModel webAppCreator,
         WeatherViewModel weather,
         SettingsViewModel settings)
     {
@@ -125,6 +128,7 @@ public sealed partial class MainViewModel : ObservableObject
         _appLauncherService = appLauncherService;
         _powerService = powerService;
         AppManager = appManager;
+        WebAppCreator = webAppCreator;
         Weather = weather;
         Settings = settings;
 
@@ -135,6 +139,7 @@ public sealed partial class MainViewModel : ObservableObject
         SidebarItems = new ObservableCollection<SidebarItemViewModel>
         {
             new(SidebarSection.Home, "Inicio", "\uE80F", isSelected: true),
+            new(SidebarSection.WebApps, "WebApps", "\uE774"),
             new(SidebarSection.Weather, "Clima", "\uE753"),
             new(SidebarSection.ManageApps, "Gestionar Apps", "\uE71D"),
             new(SidebarSection.Settings, "Ajustes", "\uE713"),
@@ -240,6 +245,7 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnActiveSectionChanged(SidebarSection value)
     {
         OnPropertyChanged(nameof(IsHomeSection));
+        OnPropertyChanged(nameof(IsWebAppsSection));
         OnPropertyChanged(nameof(IsWeatherSection));
         OnPropertyChanged(nameof(IsManageAppsSection));
         OnPropertyChanged(nameof(IsSettingsSection));
@@ -270,6 +276,7 @@ public sealed partial class MainViewModel : ObservableObject
         SectionTitle = section switch
         {
             SidebarSection.Home => "Inicio",
+            SidebarSection.WebApps => "Crear WebApp",
             SidebarSection.Weather => "Clima y Pronóstico",
             SidebarSection.ManageApps => "Gestionar Aplicaciones",
             SidebarSection.Settings => "Ajustes",
@@ -370,6 +377,20 @@ public sealed partial class MainViewModel : ObservableObject
         AppTiles.Add(tile);
         await SaveConfigAsync();
         ShowToast($"Agregado manualmente: {tile.Name}");
+    }
+
+    public async Task<bool> CreateWebAppAsync()
+    {
+        var tile = await WebAppCreator.CreateWebAppTileAsync(AppTiles, AppTiles.Count);
+        if (tile is null)
+        {
+            return false;
+        }
+
+        AppTiles.Add(tile);
+        await SaveConfigAsync();
+        ShowToast($"WebApp '{tile.Name}' agregada a Inicio.");
+        return true;
     }
 
     public void OpenTileContextMenu(AppTile tile)

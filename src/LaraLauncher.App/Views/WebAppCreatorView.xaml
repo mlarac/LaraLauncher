@@ -1,0 +1,228 @@
+<UserControl x:Class="LaraLauncher.App.Views.WebAppCreatorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:LaraLauncher.App.Controls"
+             mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Focusable="False">
+        <StackPanel Margin="12,0,12,18">
+
+            <!-- Top Section: Form (Left) + Live Roku Card Preview (Right) -->
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="310" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Form Inputs -->
+                <Border Grid.Column="0"
+                        Background="#1F143B"
+                        BorderBrush="{StaticResource RokuSubtleBorderBrush}"
+                        BorderThickness="1.5"
+                        CornerRadius="16"
+                        Padding="22,18"
+                        Margin="0,0,18,0">
+                    <StackPanel>
+                        <!-- URL Field Selector + Direct Input -->
+                        <DockPanel Margin="0,0,0,6">
+                            <Button x:Name="EditUrlWithKeyboardButton"
+                                    DockPanel.Dock="Right"
+                                    Content="⌨ Teclado virtual"
+                                    Style="{StaticResource RokuActionButtonStyle}"
+                                    FontSize="13"
+                                    Padding="14,6"
+                                    MinWidth="0"
+                                    Click="EditUrlWithKeyboardButton_Click" />
+                            <TextBlock Text="Dirección del sitio web (URL)"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource RokuTextPrimaryBrush}"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <TextBox x:Name="UrlTextBox"
+                                 Style="{StaticResource RokuTextBoxStyle}"
+                                 Text="{Binding UrlInput, UpdateSourceTrigger=PropertyChanged}"
+                                 GotKeyboardFocus="UrlTextBox_GotKeyboardFocus"
+                                 Margin="0,0,0,14" />
+
+                        <!-- Name Field Selector + Direct Input -->
+                        <DockPanel Margin="0,0,0,6">
+                            <Button x:Name="EditNameWithKeyboardButton"
+                                    DockPanel.Dock="Right"
+                                    Content="⌨ Teclado virtual"
+                                    Style="{StaticResource RokuActionButtonStyle}"
+                                    FontSize="13"
+                                    Padding="14,6"
+                                    MinWidth="0"
+                                    Click="EditNameWithKeyboardButton_Click" />
+                            <TextBlock Text="Nombre de la tarjeta (opcional)"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource RokuTextPrimaryBrush}"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <TextBox x:Name="NameTextBox"
+                                 Style="{StaticResource RokuTextBoxStyle}"
+                                 Text="{Binding NameInput, UpdateSourceTrigger=PropertyChanged}"
+                                 GotKeyboardFocus="NameTextBox_GotKeyboardFocus"
+                                 Margin="0,0,0,14" />
+
+                        <!-- Accent Color Swatches + Create Button -->
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="CreateWebAppButton"
+                                        Content="Crear WebApp en Inicio"
+                                        Style="{StaticResource RokuActionButtonStyle}"
+                                        FontSize="15"
+                                        Padding="20,10"
+                                        MinWidth="190"
+                                        Click="CreateWebAppButton_Click" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Color:"
+                                           FontSize="14"
+                                           Foreground="{StaticResource RokuTextMutedBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,10,0" />
+                                <ItemsControl x:Name="SwatchList" ItemsSource="{Binding AccentSwatches}" Focusable="False">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Width="36"
+                                                    Height="32"
+                                                    Margin="0,0,8,0"
+                                                    Tag="{Binding}"
+                                                    Cursor="Hand"
+                                                    Click="SwatchButton_Click"
+                                                    GotKeyboardFocus="SwatchButton_GotKeyboardFocus">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="SwatchBorder"
+                                                                CornerRadius="8"
+                                                                Background="{Binding Converter={StaticResource HexToBrush}}"
+                                                                BorderBrush="#66FFFFFF"
+                                                                BorderThickness="2" />
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                                <Setter TargetName="SwatchBorder" Property="BorderBrush" Value="#FFFFFF" />
+                                                                <Setter TargetName="SwatchBorder" Property="BorderThickness" Value="3" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DockPanel>
+
+                        <!-- Feedback line -->
+                        <TextBlock Text="{Binding FeedbackMessage}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   Margin="2,12,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource RokuTextMutedBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFeedbackError}" Value="True">
+                                            <Setter Property="Foreground" Value="#FF8A8A" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Live Roku Card Preview -->
+                <Border Grid.Column="1"
+                        Background="#1F143B"
+                        BorderBrush="{StaticResource RokuSubtleBorderBrush}"
+                        BorderThickness="1.5"
+                        CornerRadius="16"
+                        Padding="18">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="Vista previa de tarjeta"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource RokuAccentBrightBrush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,14" />
+
+                        <Border Width="260"
+                                Height="154"
+                                CornerRadius="14"
+                                BorderBrush="#FFFFFF"
+                                BorderThickness="2">
+                            <Grid ClipToBounds="True">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="42" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0"
+                                        CornerRadius="12,12,0,0"
+                                        Background="{Binding SelectedAccentHex, Converter={StaticResource HexToBrush}}">
+                                    <TextBlock Text="&#xE774;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="44"
+                                               Foreground="#FFFFFF"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+
+                                <Border Grid.Row="1"
+                                        Background="#1A1130"
+                                        CornerRadius="0,0,12,12"
+                                        Padding="12,0">
+                                    <DockPanel VerticalAlignment="Center">
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="WebApp"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource RokuTextMutedBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding PreviewTitle}"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#FFFFFF"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="{Binding PreviewSubtitle}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource RokuTextMutedBrush}"
+                                   HorizontalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="260"
+                                   Margin="0,12,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Reusable 10-Foot Virtual Keyboard -->
+            <controls:VirtualKeyboardControl x:Name="VirtualKeyboard"
+                                             KeyActivated="VirtualKeyboard_KeyActivated"
+                                             DoneRequested="VirtualKeyboard_DoneRequested"
+                                             ExitUpRequested="VirtualKeyboard_ExitUpRequested"
+                                             ExitLeftRequested="VirtualKeyboard_ExitLeftRequested" />
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
