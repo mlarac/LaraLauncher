@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:LaraLauncher.App.Views"
         mc:Ignorable="d"
         Title="LaraLauncher"
         Width="1280"
@@ -58,7 +59,11 @@
                                    FontSize="12"
                                    Foreground="{StaticResource RokuTextMutedBrush}"
                                    Margin="0,4,0,0" />
-                        <TextBlock Text="Esc / Back: Menú  •  F11: Pantalla"
+                        <TextBlock Text="M / Menú: Opciones  •  Esc: Atrás"
+                                   FontSize="12"
+                                   Foreground="{StaticResource RokuTextMutedBrush}"
+                                   Margin="0,2,0,0" />
+                        <TextBlock Text="F11: Pantalla completa"
                                    FontSize="12"
                                    Foreground="{StaticResource RokuTextMutedBrush}"
                                    Margin="0,2,0,0" />
@@ -95,11 +100,12 @@
         <Grid Grid.Column="1" Margin="40,32,40,28">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <!-- Top Header: Section Title + Weather Summary + Live Clock -->
-            <Grid Grid.Row="0" Margin="12,0,12,26">
+            <Grid Grid.Row="0" Margin="12,0,12,22">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -110,8 +116,8 @@
                                FontSize="34"
                                FontWeight="Bold"
                                Foreground="{StaticResource RokuTextPrimaryBrush}" />
-                    <TextBlock Text="Usa las flechas o tu control remoto para seleccionar"
-                               FontSize="15"
+                    <TextBlock Text="Presiona M o clic derecho sobre una tarjeta para mover, editar o quitar"
+                               FontSize="14"
                                Foreground="{StaticResource RokuTextMutedBrush}"
                                Margin="0,4,0,0" />
                 </StackPanel>
@@ -155,9 +161,24 @@
                 </StackPanel>
             </Grid>
 
+            <!-- Move Mode Banner -->
+            <Border Grid.Row="1"
+                    Visibility="{Binding IsMoveMode, Converter={StaticResource BoolToVisibility}}"
+                    Background="#7E4AE8"
+                    BorderBrush="#FFFFFF"
+                    BorderThickness="2"
+                    CornerRadius="12"
+                    Padding="20,12"
+                    Margin="12,0,12,16">
+                <TextBlock Text="{Binding MoveModeBannerText}"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Foreground="#FFFFFF" />
+            </Border>
+
             <!-- Home Section: Roku Tile Grid -->
             <ScrollViewer x:Name="HomeScrollViewer"
-                          Grid.Row="1"
+                          Grid.Row="2"
                           Visibility="{Binding IsHomeGridVisible, Converter={StaticResource BoolToVisibility}}"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
@@ -178,7 +199,8 @@
                             <Button Style="{StaticResource RokuTileButtonStyle}"
                                     Command="{Binding DataContext.LaunchTileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                     CommandParameter="{Binding}"
-                                    GotKeyboardFocus="TileButton_GotKeyboardFocus">
+                                    GotKeyboardFocus="TileButton_GotKeyboardFocus"
+                                    MouseRightButtonUp="TileButton_MouseRightButtonUp">
                                 <Grid ClipToBounds="True">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="*" />
@@ -244,9 +266,9 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <!-- Home Empty State (Friendly first-run onboarding) -->
+            <!-- Home Empty State -->
             <Border x:Name="HomeEmptyState"
-                    Grid.Row="1"
+                    Grid.Row="2"
                     Visibility="{Binding IsHomeEmptyVisible, Converter={StaticResource BoolToVisibility}}"
                     Background="#1F143B"
                     BorderBrush="{StaticResource RokuSubtleBorderBrush}"
@@ -264,7 +286,7 @@
                     <TextBlock Text="Tu pantalla de inicio está lista"
                                FontSize="28"
                                FontWeight="Bold" />
-                    <TextBlock Text="Aún no has agregado aplicaciones a LaraLauncher. Puedes cargar un conjunto básico de Windows para probar el lanzamiento real o ir al gestor de aplicaciones."
+                    <TextBlock Text="Aún no has agregado aplicaciones a LaraLauncher. Abre el gestor gráfico para marcar tus aplicaciones instaladas en Windows o carga un conjunto básico de prueba."
                                FontSize="16"
                                Foreground="{StaticResource RokuTextMutedBrush}"
                                TextWrapping="Wrap"
@@ -272,21 +294,31 @@
                                HorizontalAlignment="Left"
                                Margin="0,10,0,28" />
                     <StackPanel Orientation="Horizontal">
+                        <Button x:Name="EmptyManageAppsButton"
+                                Content="Elegir aplicaciones instaladas"
+                                Style="{StaticResource RokuActionButtonStyle}"
+                                Margin="0,0,16,0"
+                                Click="EmptyManageAppsButton_Click" />
                         <Button x:Name="EmptyAddStarterButton"
                                 Content="Cargar apps básicas de Windows"
                                 Style="{StaticResource RokuActionButtonStyle}"
-                                Margin="0,0,16,0"
                                 Click="EmptyAddStarterButton_Click" />
-                        <Button x:Name="EmptyManageAppsButton"
-                                Content="Ir a Gestionar Apps"
-                                Style="{StaticResource RokuActionButtonStyle}"
-                                Click="EmptyManageAppsButton_Click" />
                     </StackPanel>
                 </StackPanel>
             </Border>
 
+            <!-- Graphical Manage Apps Section (Phase 3) -->
+            <views:AppManagerView x:Name="AppManagerViewControl"
+                                  Grid.Row="2"
+                                  DataContext="{Binding AppManager}"
+                                  Visibility="{Binding DataContext.IsManageAppsSection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
+                                  AppToggled="AppManagerView_AppToggled"
+                                  ManualFileSelected="AppManagerView_ManualFileSelected"
+                                  RefreshRequested="AppManagerView_RefreshRequested"
+                                  ExitToSidebarRequested="AppManagerView_ExitToSidebarRequested" />
+
             <!-- Weather Placeholder (Phase 4) -->
-            <Border Grid.Row="1"
+            <Border Grid.Row="2"
                     Visibility="{Binding IsWeatherSection, Converter={StaticResource BoolToVisibility}}"
                     Background="#1F143B"
                     BorderBrush="{StaticResource RokuSubtleBorderBrush}"
@@ -307,30 +339,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- Manage Apps Placeholder (Phase 3) -->
-            <Border Grid.Row="1"
-                    Visibility="{Binding IsManageAppsSection, Converter={StaticResource BoolToVisibility}}"
-                    Background="#1F143B"
-                    BorderBrush="{StaticResource RokuSubtleBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    Padding="36"
-                    Margin="12"
-                    VerticalAlignment="Top">
-                <StackPanel>
-                    <TextBlock Text="Gestor Gráfico de Aplicaciones — Próximamente en Fase 3"
-                               FontSize="24"
-                               FontWeight="Bold" />
-                    <TextBlock Text="Aquí podrás marcar gráficamente qué aplicaciones instaladas en Windows aparecen en LaraLauncher, agregar ejecutables manualmente, editar nombres y reordenar tarjetas sin tocar archivos de configuración."
-                               FontSize="16"
-                               Foreground="{StaticResource RokuTextMutedBrush}"
-                               TextWrapping="Wrap"
-                               Margin="0,12,0,0" />
-                </StackPanel>
-            </Border>
-
             <!-- Settings Placeholder (Phase 5) -->
-            <Border Grid.Row="1"
+            <Border Grid.Row="2"
                     Visibility="{Binding IsSettingsSection, Converter={StaticResource BoolToVisibility}}"
                     Background="#1F143B"
                     BorderBrush="{StaticResource RokuSubtleBorderBrush}"
@@ -352,7 +362,7 @@
             </Border>
 
             <!-- Status Toast Notification -->
-            <Border Grid.Row="1"
+            <Border Grid.Row="2"
                     Visibility="{Binding IsStatusToastVisible, Converter={StaticResource BoolToVisibility}}"
                     Background="#E62A1B52"
                     BorderBrush="{StaticResource RokuAccentBrightBrush}"
@@ -369,7 +379,151 @@
             </Border>
         </Grid>
 
-        <!-- Exit Confirmation Overlay (100% Keyboard/Remote navigable) -->
+        <!-- Tile Context Menu Overlay (100% Keyboard/Remote navigable) -->
+        <Grid x:Name="TileContextOverlay"
+              Grid.ColumnSpan="2"
+              Background="#CC0A0514"
+              Visibility="{Binding IsTileContextMenuVisible, Converter={StaticResource BoolToVisibility}}">
+            <Border Background="#20143D"
+                    BorderBrush="{StaticResource RokuAccentBrightBrush}"
+                    BorderThickness="2"
+                    CornerRadius="18"
+                    Padding="34,28"
+                    Width="440"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" BlurRadius="35" ShadowDepth="0" Opacity="0.7" />
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="{Binding ContextTile.Name}"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="Opciones de tarjeta"
+                               FontSize="14"
+                               Foreground="{StaticResource RokuTextMutedBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,4,0,22" />
+
+                    <Button x:Name="ContextMoveButton"
+                            Content="Mover tarjeta en la grilla"
+                            Style="{StaticResource RokuActionButtonStyle}"
+                            Margin="0,0,0,10"
+                            Click="ContextMoveButton_Click" />
+                    <Button x:Name="ContextEditButton"
+                            Content="Editar nombre, categoría y color"
+                            Style="{StaticResource RokuActionButtonStyle}"
+                            Margin="0,0,0,10"
+                            Click="ContextEditButton_Click" />
+                    <Button x:Name="ContextRemoveButton"
+                            Content="Quitar de Inicio"
+                            Style="{StaticResource RokuActionButtonStyle}"
+                            Margin="0,0,0,10"
+                            Click="ContextRemoveButton_Click" />
+                    <Button x:Name="ContextCancelButton"
+                            Content="Cancelar"
+                            Style="{StaticResource RokuActionButtonStyle}"
+                            Click="ContextCancelButton_Click" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Edit Tile Dialog Overlay -->
+        <Grid x:Name="EditTileOverlay"
+              Grid.ColumnSpan="2"
+              Background="#CC0A0514"
+              Visibility="{Binding IsEditTileDialogVisible, Converter={StaticResource BoolToVisibility}}">
+            <Border Background="#20143D"
+                    BorderBrush="{StaticResource RokuAccentBrightBrush}"
+                    BorderThickness="2"
+                    CornerRadius="18"
+                    Padding="36,30"
+                    Width="520"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" BlurRadius="35" ShadowDepth="0" Opacity="0.7" />
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="Editar tarjeta"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Margin="0,0,0,20" />
+
+                    <TextBlock Text="Nombre visible"
+                               FontSize="14"
+                               Foreground="{StaticResource RokuTextMutedBrush}"
+                               Margin="0,0,0,6" />
+                    <TextBox x:Name="EditNameTextBox"
+                             Style="{StaticResource RokuTextBoxStyle}"
+                             Text="{Binding EditTileName, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,0,16" />
+
+                    <TextBlock Text="Categoría"
+                               FontSize="14"
+                               Foreground="{StaticResource RokuTextMutedBrush}"
+                               Margin="0,0,0,6" />
+                    <TextBox x:Name="EditCategoryTextBox"
+                             Style="{StaticResource RokuTextBoxStyle}"
+                             Text="{Binding EditTileCategory, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,0,16" />
+
+                    <TextBlock Text="Color de tarjeta"
+                               FontSize="14"
+                               Foreground="{StaticResource RokuTextMutedBrush}"
+                               Margin="0,0,0,8" />
+                    <ItemsControl ItemsSource="{Binding AccentSwatches}" Margin="0,0,0,24">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="48"
+                                        Height="36"
+                                        Margin="0,0,10,0"
+                                        Tag="{Binding}"
+                                        Cursor="Hand"
+                                        Click="AccentSwatchButton_Click">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="SwatchBorder"
+                                                    CornerRadius="8"
+                                                    Background="{Binding Converter={StaticResource HexToBrush}}"
+                                                    BorderBrush="#66FFFFFF"
+                                                    BorderThickness="2" />
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                                    <Setter TargetName="SwatchBorder" Property="BorderBrush" Value="#FFFFFF" />
+                                                    <Setter TargetName="SwatchBorder" Property="BorderThickness" Value="3" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="EditCancelButton"
+                                Content="Cancelar"
+                                Style="{StaticResource RokuActionButtonStyle}"
+                                Margin="0,0,14,0"
+                                Click="EditCancelButton_Click" />
+                        <Button x:Name="EditSaveButton"
+                                Content="Guardar"
+                                Style="{StaticResource RokuActionButtonStyle}"
+                                Click="EditSaveButton_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Exit Confirmation Overlay -->
         <Grid x:Name="ExitOverlay"
               Grid.ColumnSpan="2"
               Background="#CC0A0514"

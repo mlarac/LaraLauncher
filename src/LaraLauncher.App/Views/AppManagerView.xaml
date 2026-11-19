@@ -1,0 +1,213 @@
+<UserControl x:Class="LaraLauncher.App.Views.AppManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Grid Margin="12,0,12,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Action Toolbar -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Search Filter Input -->
+            <Grid Grid.Column="0" Margin="0,0,14,0">
+                <TextBox x:Name="SearchBox"
+                         Style="{StaticResource RokuTextBoxStyle}"
+                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Filtrar aplicaciones detectadas por nombre o categoría" />
+                <TextBlock Text="Filtrar aplicaciones instaladas..."
+                           FontSize="15"
+                           Foreground="{StaticResource RokuTextMutedBrush}"
+                           VerticalAlignment="Center"
+                           Margin="18,0,0,0"
+                           IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text.Length, ElementName=SearchBox}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+            <Button x:Name="AddManualButton"
+                    Grid.Column="1"
+                    Content="+ Agregar .exe / .lnk"
+                    Style="{StaticResource RokuActionButtonStyle}"
+                    FontSize="15"
+                    Padding="18,10"
+                    MinWidth="0"
+                    Margin="0,0,10,0"
+                    Click="AddManualButton_Click" />
+
+            <Button x:Name="RefreshButton"
+                    Grid.Column="2"
+                    Content="Actualizar"
+                    Style="{StaticResource RokuActionButtonStyle}"
+                    FontSize="15"
+                    Padding="18,10"
+                    MinWidth="0"
+                    Margin="0,0,12,0"
+                    Click="RefreshButton_Click" />
+
+            <Border Grid.Column="3"
+                    Background="#2B1C54"
+                    BorderBrush="{StaticResource RokuAccentBrightBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16,10"
+                    VerticalAlignment="Center">
+                <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#FFFFFF">
+                    <Run Text="{Binding ActiveAppsCount, Mode=OneWay}" />
+                    <Run Text=" en Inicio" />
+                </TextBlock>
+            </Border>
+        </Grid>
+
+        <!-- Helper status line -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding StatusMessage}"
+                   FontSize="14"
+                   Foreground="{StaticResource RokuTextMutedBrush}"
+                   Margin="4,0,0,12" />
+
+        <!-- Loading indicator -->
+        <Border Grid.Row="2"
+                Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}"
+                Background="#1F143B"
+                CornerRadius="14"
+                Padding="36"
+                VerticalAlignment="Top">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="Escaneando aplicaciones instaladas en Windows..."
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Extrayendo íconos para la vista gráfica..."
+                           FontSize="14"
+                           Foreground="{StaticResource RokuTextMutedBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Empty search result message -->
+        <Border Grid.Row="2"
+                Visibility="{Binding ShowEmptyFilterMessage, Converter={StaticResource BoolToVisibility}}"
+                Background="#1F143B"
+                CornerRadius="14"
+                Padding="32"
+                VerticalAlignment="Top">
+            <TextBlock Text="No hay aplicaciones que coincidan con tu búsqueda. Puedes limpiar el filtro o usar '+ Agregar .exe / .lnk'."
+                       FontSize="16"
+                       Foreground="{StaticResource RokuTextMutedBrush}"
+                       TextWrapping="Wrap" />
+        </Border>
+
+        <!-- Graphical Checklist of Discovered Applications -->
+        <ScrollViewer x:Name="AppsScrollViewer"
+                      Grid.Row="2"
+                      Visibility="{Binding HasFilteredApps, Converter={StaticResource BoolToVisibility}}"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Focusable="False">
+            <ItemsControl x:Name="DiscoveredAppsList"
+                          ItemsSource="{Binding FilteredApps}"
+                          Focusable="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource RokuListRowButtonStyle}"
+                                Click="AppRowButton_Click"
+                                GotKeyboardFocus="AppRowButton_GotKeyboardFocus">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="52" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Icon Badge -->
+                                <Border Grid.Column="0"
+                                        Width="44"
+                                        Height="44"
+                                        CornerRadius="10"
+                                        Background="{Binding AccentHex, Converter={StaticResource HexToBrush}}"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center">
+                                    <Grid>
+                                        <Image Source="{Binding IconPath, Converter={StaticResource FilePathToImage}}"
+                                               Visibility="{Binding IconPath, Converter={StaticResource FileExistsToVisibility}}"
+                                               Width="30"
+                                               Height="30"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                        <TextBlock Text="&#xE74C;"
+                                                   Visibility="{Binding IconPath, Converter={StaticResource FileExistsToVisibility}, ConverterParameter=Invert}"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="22"
+                                                   Foreground="#FFFFFF"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- Name & Category -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,16,0">
+                                    <TextBlock Text="{Binding Name}"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource RokuTextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Category}"
+                                               FontSize="13"
+                                               Foreground="{StaticResource RokuTextMutedBrush}"
+                                               Margin="0,2,0,0" />
+                                </StackPanel>
+
+                                <!-- Visual Checkmark / Toggle Pill -->
+                                <Border Grid.Column="2"
+                                        CornerRadius="10"
+                                        Padding="16,8"
+                                        VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#2B2145" />
+                                            <Setter Property="BorderBrush" Value="{StaticResource RokuSubtleBorderBrush}" />
+                                            <Setter Property="BorderThickness" Value="1.5" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource RokuAccentBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource RokuAccentBrightBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding ActionBadgeText}"
+                                               FontSize="14"
+                                               FontWeight="Bold"
+                                               Foreground="#FFFFFF" />
+                                </Border>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -87,10 +87,7 @@ public partial class MainWindow : Window
 
     private void OnExternalAppLaunched(object? sender, AppTile tile)
     {
-        Dispatcher.BeginInvoke(() =>
-        {
-            _inputRouter.StopExternalProviders();
-        });
+        Dispatcher.BeginInvoke(() => _inputRouter.StopExternalProviders());
     }
 
     private void OnExternalAppExited(object? sender, AppTile tile)
@@ -124,6 +121,23 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Do not hijack typing keys (letters, space, backspace, left/right cursor) while typing in a TextBox.
+        if (Keyboard.FocusedElement is TextBox)
+        {
+            if (e.Key == Key.Escape)
+            {
+                _inputRouter.TryRouteKey(e.Key);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Down && _viewModel.IsManageAppsSection && !_viewModel.IsEditTileDialogVisible)
+            {
+                _inputRouter.TryRouteKey(e.Key);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
         if (_inputRouter.TryRouteKey(e.Key))
         {
             e.Handled = true;
@@ -149,6 +163,18 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_viewModel.IsEditTileDialogVisible)
+        {
+            HandleEditTileDialogNavigation(action);
+            return;
+        }
+
+        if (_viewModel.IsTileContextMenuVisible)
+        {
+            HandleTileContextMenuNavigation(action);
+            return;
+        }
+
         if (action == NavigationAction.Home)
         {
             _viewModel.SelectSection(SidebarSection.Home);
@@ -167,6 +193,10 @@ public partial class MainWindow : Window
         else if (_viewModel.IsHomeEmptyVisible)
         {
             HandleEmptyStateNavigation(action);
+        }
+        else if (_viewModel.IsManageAppsSection)
+        {
+            AppManagerViewControl.HandleNavigationAction(action);
         }
         else if (action is NavigationAction.Left or NavigationAction.Back)
         {
@@ -200,6 +230,79 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void HandleTileContextMenuNavigation(NavigationAction action)
+    {
+        Button[] buttons = [ContextMoveButton, ContextEditButton, ContextRemoveButton, ContextCancelButton];
+        int current = Array.FindIndex(buttons, b => b.IsKeyboardFocused);
+        if (current < 0)
+        {
+            current = 0;
+        }
+
+        switch (action)
+        {
+            case NavigationAction.Up:
+                buttons[Math.Max(0, current - 1)].Focus();
+                break;
+            case NavigationAction.Down:
+                buttons[Math.Min(buttons.Length - 1, current + 1)].Focus();
+                break;
+            case NavigationAction.Back:
+                CloseTileContextMenuAndRestoreFocus();
+                break;
+            case NavigationAction.Select:
+                if (ReferenceEquals(buttons[current], ContextMoveButton))
+                {
+                    StartMoveModeFromContext();
+                }
+                else if (ReferenceEquals(buttons[current], ContextEditButton))
+                {
+                    OpenEditDialogFromContext();
+                }
+                else if (ReferenceEquals(buttons[current], ContextRemoveButton))
+                {
+                    await RemoveTileFromContextAsync();
+                }
+                else
+                {
+                    CloseTileContextMenuAndRestoreFocus();
+                }
+                break;
+        }
+    }
+
+    private async void HandleEditTileDialogNavigation(NavigationAction action)
+    {
+        switch (action)
+        {
+            case NavigationAction.Back:
+                CancelEditDialogAndRestoreFocus();
+                break;
+            case NavigationAction.Left:
+                if (EditSaveButton.IsKeyboardFocused)
+                {
+                    EditCancelButton.Focus();
+                }
+                break;
+            case NavigationAction.Right:
+                if (EditCancelButton.IsKeyboardFocused)
+                {
+                    EditSaveButton.Focus();
+                }
+                break;
+            case NavigationAction.Select:
+                if (EditSaveButton.IsKeyboardFocused)
+                {
+                    await SaveEditDialogAndRestoreFocusAsync();
+                }
+                else if (EditCancelButton.IsKeyboardFocused)
+                {
+                    CancelEditDialogAndRestoreFocus();
+                }
+                break;
+        }
+    }
+
     private void HandleSidebarNavigation(NavigationAction action)
     {
         int count = _viewModel.SidebarItems.Count;
@@ -219,10 +322,7 @@ public partial class MainWindow : Window
                 break;
 
             case NavigationAction.Right:
-                if (_viewModel.IsHomeSection)
-                {
-                    FocusHomePrimaryControl();
-                }
+                FocusActiveSectionContent();
                 break;
 
             case NavigationAction.Select:
@@ -231,10 +331,7 @@ public partial class MainWindow : Window
                 break;
 
             case NavigationAction.Back:
-                if (_viewModel.IsHomeSection)
-                {
-                    FocusHomePrimaryControl();
-                }
+                FocusActiveSectionContent();
                 break;
         }
     }
@@ -244,9 +341,9 @@ public partial class MainWindow : Window
         switch (action)
         {
             case NavigationAction.Left:
-                if (EmptyManageAppsButton.IsKeyboardFocused)
+                if (EmptyAddStarterButton.IsKeyboardFocused)
                 {
-                    EmptyAddStarterButton.Focus();
+                    EmptyManageAppsButton.Focus();
                 }
                 else
                 {
@@ -255,7 +352,7 @@ public partial class MainWindow : Window
                 break;
 
             case NavigationAction.Right:
-                EmptyManageAppsButton.Focus();
+                EmptyAddStarterButton.Focus();
                 break;
 
             case NavigationAction.Back:
@@ -263,14 +360,13 @@ public partial class MainWindow : Window
                 break;
 
             case NavigationAction.Select:
-                if (EmptyManageAppsButton.IsKeyboardFocused)
+                if (EmptyAddStarterButton.IsKeyboardFocused)
                 {
-                    _viewModel.OpenManageApps();
-                    FocusSidebarForActiveSection();
+                    await AddStarterAppsAndFocusGridAsync();
                 }
                 else
                 {
-                    await AddStarterAppsAndFocusGridAsync();
+                    OpenManageAppsAndFocus();
                 }
                 break;
         }
@@ -279,6 +375,12 @@ public partial class MainWindow : Window
     private async void HandleTileGridNavigation(NavigationAction action)
     {
         int tileCount = _viewModel.AppTiles.Count;
+
+        if (_viewModel.IsMoveMode)
+        {
+            await HandleMoveModeNavigationAsync(action, tileCount);
+            return;
+        }
 
         switch (action)
         {
@@ -311,10 +413,49 @@ public partial class MainWindow : Window
             case NavigationAction.ContextMenu:
                 if (_lastFocusedTileIndex >= 0 && _lastFocusedTileIndex < tileCount)
                 {
-                    var tile = _viewModel.AppTiles[_lastFocusedTileIndex];
-                    _viewModel.ShowToast($"Opciones de {tile.Name}: Mover / Editar / Quitar (Fase 3)");
+                    OpenContextMenuForTile(_viewModel.AppTiles[_lastFocusedTileIndex]);
                 }
                 break;
+        }
+    }
+
+    private async Task HandleMoveModeNavigationAsync(NavigationAction action, int tileCount)
+    {
+        switch (action)
+        {
+            case NavigationAction.Up:
+            case NavigationAction.Down:
+            case NavigationAction.Left:
+            case NavigationAction.Right:
+                var result = GridNavigator.Move(_lastFocusedTileIndex, tileCount, TileColumns, action);
+                if (!result.ExitToSidebar && result.NewIndex >= 0 && result.NewIndex != _lastFocusedTileIndex)
+                {
+                    int targetIndex = result.NewIndex;
+                    if (_viewModel.TrySwapTileInMoveMode(_lastFocusedTileIndex, targetIndex))
+                    {
+                        _lastFocusedTileIndex = targetIndex;
+                        await Dispatcher.InvokeAsync(() => FocusTileAt(targetIndex));
+                    }
+                }
+                break;
+
+            case NavigationAction.Select:
+            case NavigationAction.Back:
+                await _viewModel.FinishMoveModeAsync();
+                FocusTileAt(_lastFocusedTileIndex);
+                break;
+        }
+    }
+
+    private void FocusActiveSectionContent()
+    {
+        if (_viewModel.IsHomeSection)
+        {
+            FocusHomePrimaryControl();
+        }
+        else if (_viewModel.IsManageAppsSection)
+        {
+            AppManagerViewControl.FocusPrimaryControl();
         }
     }
 
@@ -322,6 +463,12 @@ public partial class MainWindow : Window
     {
         await _viewModel.AddStarterAppsAsync();
         await Dispatcher.InvokeAsync(() => FocusTileAt(0));
+    }
+
+    private void OpenManageAppsAndFocus()
+    {
+        _viewModel.OpenManageApps();
+        Dispatcher.BeginInvoke(() => AppManagerViewControl.FocusPrimaryControl());
     }
 
     private void FocusHomePrimaryControl()
@@ -333,7 +480,7 @@ public partial class MainWindow : Window
 
         if (_viewModel.IsHomeEmptyVisible)
         {
-            EmptyAddStarterButton.Focus();
+            EmptyManageAppsButton.Focus();
             return;
         }
 
@@ -354,6 +501,56 @@ public partial class MainWindow : Window
         {
             Dispatcher.BeginInvoke(FocusHomePrimaryControl);
         }
+        else if (section == SidebarSection.ManageApps)
+        {
+            Dispatcher.BeginInvoke(() => AppManagerViewControl.FocusPrimaryControl());
+        }
+    }
+
+    private void OpenContextMenuForTile(AppTile tile)
+    {
+        _viewModel.OpenTileContextMenu(tile);
+        Dispatcher.BeginInvoke(() => ContextMoveButton.Focus());
+    }
+
+    private void CloseTileContextMenuAndRestoreFocus()
+    {
+        _viewModel.CloseTileContextMenu();
+        FocusHomePrimaryControl();
+    }
+
+    private void StartMoveModeFromContext()
+    {
+        _viewModel.StartMoveMode();
+        FocusTileAt(_lastFocusedTileIndex);
+    }
+
+    private void OpenEditDialogFromContext()
+    {
+        _viewModel.OpenEditTileDialog();
+        Dispatcher.BeginInvoke(() =>
+        {
+            EditNameTextBox.Focus();
+            EditNameTextBox.SelectAll();
+        });
+    }
+
+    private async Task SaveEditDialogAndRestoreFocusAsync()
+    {
+        await _viewModel.SaveEditTileAsync();
+        await Dispatcher.InvokeAsync(FocusHomePrimaryControl);
+    }
+
+    private void CancelEditDialogAndRestoreFocus()
+    {
+        _viewModel.CancelEditTile();
+        FocusHomePrimaryControl();
+    }
+
+    private async Task RemoveTileFromContextAsync()
+    {
+        await _viewModel.RemoveContextTileAsync();
+        await Dispatcher.InvokeAsync(FocusHomePrimaryControl);
     }
 
     private void CloseExitDialog()
@@ -362,6 +559,7 @@ public partial class MainWindow : Window
         FocusSidebarForActiveSection();
     }
 
+    // Event handlers for Sidebar, Grid, AppManagerView, and Overlays
     private void SidebarButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: SidebarSection section })
@@ -400,17 +598,56 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TileButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button { DataContext: AppTile tile })
+        {
+            int idx = _viewModel.AppTiles.IndexOf(tile);
+            if (idx >= 0)
+            {
+                _lastFocusedTileIndex = idx;
+            }
+
+            OpenContextMenuForTile(tile);
+            e.Handled = true;
+        }
+    }
+
+    private async void AppManagerView_AppToggled(object? sender, SelectableAppViewModel item)
+        => await _viewModel.ToggleDiscoveredAppAsync(item);
+
+    private async void AppManagerView_ManualFileSelected(object? sender, string filePath)
+        => await _viewModel.AddManualAppFileAsync(filePath);
+
+    private async void AppManagerView_RefreshRequested(object? sender, EventArgs e)
+        => await _viewModel.AppManager.RefreshScanAsync(_viewModel.AppTiles);
+
+    private void AppManagerView_ExitToSidebarRequested(object? sender, EventArgs e)
+        => FocusSidebarForActiveSection();
+
     private async void EmptyAddStarterButton_Click(object sender, RoutedEventArgs e)
         => await AddStarterAppsAndFocusGridAsync();
 
     private void EmptyManageAppsButton_Click(object sender, RoutedEventArgs e)
+        => OpenManageAppsAndFocus();
+
+    private void ContextMoveButton_Click(object sender, RoutedEventArgs e) => StartMoveModeFromContext();
+    private void ContextEditButton_Click(object sender, RoutedEventArgs e) => OpenEditDialogFromContext();
+    private async void ContextRemoveButton_Click(object sender, RoutedEventArgs e) => await RemoveTileFromContextAsync();
+    private void ContextCancelButton_Click(object sender, RoutedEventArgs e) => CloseTileContextMenuAndRestoreFocus();
+
+    private void AccentSwatchButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.OpenManageApps();
-        FocusSidebarForActiveSection();
+        if (sender is Button { Tag: string hex })
+        {
+            _viewModel.SelectEditAccent(hex);
+        }
     }
 
-    private void CancelExitButton_Click(object sender, RoutedEventArgs e) => CloseExitDialog();
+    private async void EditSaveButton_Click(object sender, RoutedEventArgs e) => await SaveEditDialogAndRestoreFocusAsync();
+    private void EditCancelButton_Click(object sender, RoutedEventArgs e) => CancelEditDialogAndRestoreFocus();
 
+    private void CancelExitButton_Click(object sender, RoutedEventArgs e) => CloseExitDialog();
     private void ConfirmExitButton_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
 
     private bool IsFocusInSidebar()

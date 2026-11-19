@@ -33,12 +33,15 @@ public partial class App : Application
     {
         // Persistence & Windows Infrastructure
         services.AddSingleton<IConfigRepository>(_ => new JsonConfigRepository());
+        services.AddSingleton<IconCacheService>(_ => new IconCacheService());
+        services.AddSingleton<IInstalledAppsScanner, WindowsInstalledAppsScanner>();
         services.AddSingleton<IAppLauncherService, WindowsAppLauncherService>();
 
         // Input routing (external IInputProvider implementations such as XInput register here in Phase 5)
         services.AddSingleton<WpfInputRouter>();
 
         // ViewModels
+        services.AddSingleton<AppManagerViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // Views
