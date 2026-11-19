@@ -123,28 +123,38 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Weather Summary Pill -->
-                    <Border Background="#261847"
-                            BorderBrush="{StaticResource RokuSubtleBorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="12"
-                            Padding="16,10"
+                    <!-- Weather Summary Pill (clickable to open Weather section) -->
+                    <Button Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
                             Margin="0,0,18,0"
-                            VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE753;"
-                                       FontFamily="Segoe MDL2 Assets"
-                                       FontSize="20"
-                                       Foreground="{StaticResource RokuAccentBrightBrush}"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0" />
-                            <TextBlock Text="{Binding WeatherSummaryText}"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource RokuTextPrimaryBrush}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
+                            Cursor="Hand"
+                            Focusable="False"
+                            Click="WeatherHeaderPill_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="#261847"
+                                        BorderBrush="{StaticResource RokuSubtleBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="12"
+                                        Padding="16,10"
+                                        VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Weather.HeaderIcon}"
+                                                   FontFamily="Segoe UI Emoji"
+                                                   FontSize="20"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" />
+                                        <TextBlock Text="{Binding Weather.HeaderSummaryText}"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{StaticResource RokuTextPrimaryBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
 
                     <!-- Clock -->
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right">
@@ -317,27 +327,12 @@
                                   RefreshRequested="AppManagerView_RefreshRequested"
                                   ExitToSidebarRequested="AppManagerView_ExitToSidebarRequested" />
 
-            <!-- Weather Placeholder (Phase 4) -->
-            <Border Grid.Row="2"
-                    Visibility="{Binding IsWeatherSection, Converter={StaticResource BoolToVisibility}}"
-                    Background="#1F143B"
-                    BorderBrush="{StaticResource RokuSubtleBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    Padding="36"
-                    Margin="12"
-                    VerticalAlignment="Top">
-                <StackPanel>
-                    <TextBlock Text="Pronóstico del Tiempo — Próximamente en Fase 4"
-                               FontSize="24"
-                               FontWeight="Bold" />
-                    <TextBlock Text="Aquí se mostrará el clima actual y el pronóstico detallado de los próximos 5 a 7 días usando Open-Meteo con caché local y buscador de ciudad."
-                               FontSize="16"
-                               Foreground="{StaticResource RokuTextMutedBrush}"
-                               TextWrapping="Wrap"
-                               Margin="0,12,0,0" />
-                </StackPanel>
-            </Border>
+            <!-- Weather & 7-Day Forecast Section (Phase 4) -->
+            <views:WeatherDetailView x:Name="WeatherDetailViewControl"
+                                     Grid.Row="2"
+                                     DataContext="{Binding Weather}"
+                                     Visibility="{Binding DataContext.IsWeatherSection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
+                                     ExitToSidebarRequested="WeatherDetailView_ExitToSidebarRequested" />
 
             <!-- Settings Placeholder (Phase 5) -->
             <Border Grid.Row="2"

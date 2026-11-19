@@ -19,6 +19,7 @@ public sealed partial class MainViewModel : ObservableObject
     private LauncherConfig _config = new();
 
     public AppManagerViewModel AppManager { get; }
+    public WeatherViewModel Weather { get; }
     public ObservableCollection<SidebarItemViewModel> SidebarItems { get; }
     public ObservableCollection<AppTile> AppTiles { get; }
 
@@ -98,11 +99,15 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         IConfigRepository configRepository,
         IAppLauncherService appLauncherService,
-        AppManagerViewModel appManager)
+        AppManagerViewModel appManager,
+        WeatherViewModel weather)
     {
         _configRepository = configRepository;
         _appLauncherService = appLauncherService;
         AppManager = appManager;
+        Weather = weather;
+
+        Weather.LocationSelected += OnWeatherLocationSelected;
 
         SidebarItems = new ObservableCollection<SidebarItemViewModel>
         {
@@ -138,6 +143,16 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _config = await _configRepository.LoadAsync();
         SyncAppTilesFromConfig();
+        _ = Weather.InitializeFromSettingsAsync(_config.Settings);
+    }
+
+    private async void OnWeatherLocationSelected(object? sender, GeoLocation location)
+    {
+        _config.Settings.WeatherCityName = location.DisplayName;
+        _config.Settings.WeatherLatitude = location.Latitude;
+        _config.Settings.WeatherLongitude = location.Longitude;
+        await SaveConfigAsync();
+        ShowToast($"Ciudad del clima guardada: {location.Name}");
     }
 
     public async Task SaveConfigAsync()

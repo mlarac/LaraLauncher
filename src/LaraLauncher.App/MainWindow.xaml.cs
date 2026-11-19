@@ -129,7 +129,9 @@ public partial class MainWindow : Window
                 _inputRouter.TryRouteKey(e.Key);
                 e.Handled = true;
             }
-            else if (e.Key == Key.Down && _viewModel.IsManageAppsSection && !_viewModel.IsEditTileDialogVisible)
+            else if (e.Key == Key.Down &&
+                     (_viewModel.IsManageAppsSection || _viewModel.IsWeatherSection) &&
+                     !_viewModel.IsEditTileDialogVisible)
             {
                 _inputRouter.TryRouteKey(e.Key);
                 e.Handled = true;
@@ -197,6 +199,10 @@ public partial class MainWindow : Window
         else if (_viewModel.IsManageAppsSection)
         {
             AppManagerViewControl.HandleNavigationAction(action);
+        }
+        else if (_viewModel.IsWeatherSection)
+        {
+            _ = WeatherDetailViewControl.HandleNavigationActionAsync(action);
         }
         else if (action is NavigationAction.Left or NavigationAction.Back)
         {
@@ -457,6 +463,10 @@ public partial class MainWindow : Window
         {
             AppManagerViewControl.FocusPrimaryControl();
         }
+        else if (_viewModel.IsWeatherSection)
+        {
+            WeatherDetailViewControl.FocusPrimaryControl();
+        }
     }
 
     private async Task AddStarterAppsAndFocusGridAsync()
@@ -504,6 +514,10 @@ public partial class MainWindow : Window
         else if (section == SidebarSection.ManageApps)
         {
             Dispatcher.BeginInvoke(() => AppManagerViewControl.FocusPrimaryControl());
+        }
+        else if (section == SidebarSection.Weather)
+        {
+            Dispatcher.BeginInvoke(() => WeatherDetailViewControl.FocusPrimaryControl());
         }
     }
 
@@ -624,6 +638,12 @@ public partial class MainWindow : Window
 
     private void AppManagerView_ExitToSidebarRequested(object? sender, EventArgs e)
         => FocusSidebarForActiveSection();
+
+    private void WeatherDetailView_ExitToSidebarRequested(object? sender, EventArgs e)
+        => FocusSidebarForActiveSection();
+
+    private void WeatherHeaderPill_Click(object sender, RoutedEventArgs e)
+        => ActivateSidebarSection(SidebarSection.Weather);
 
     private async void EmptyAddStarterButton_Click(object sender, RoutedEventArgs e)
         => await AddStarterAppsAndFocusGridAsync();

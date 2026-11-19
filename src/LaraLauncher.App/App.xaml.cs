@@ -1,8 +1,11 @@
+using System.Net.Http;
 using System.Windows;
 using LaraLauncher.App.Input;
 using LaraLauncher.App.ViewModels;
 using LaraLauncher.Core.Interfaces;
+using LaraLauncher.Core.Services;
 using LaraLauncher.Infrastructure.Persistence;
+using LaraLauncher.Infrastructure.Weather;
 using LaraLauncher.Infrastructure.Windows;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,11 +40,21 @@ public partial class App : Application
         services.AddSingleton<IInstalledAppsScanner, WindowsInstalledAppsScanner>();
         services.AddSingleton<IAppLauncherService, WindowsAppLauncherService>();
 
+        // Weather (Open-Meteo + Local Disk Cache Decorator)
+        services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(10) });
+        services.AddSingleton<IWeatherCacheStore>(_ => new JsonWeatherCacheStore());
+        services.AddSingleton<OpenMeteoWeatherService>();
+        services.AddSingleton<ILocationSearchService>(sp => sp.GetRequiredService<OpenMeteoWeatherService>());
+        services.AddSingleton<IWeatherService>(sp => new CachedWeatherService(
+            sp.GetRequiredService<OpenMeteoWeatherService>(),
+            sp.GetRequiredService<IWeatherCacheStore>()));
+
         // Input routing (external IInputProvider implementations such as XInput register here in Phase 5)
         services.AddSingleton<WpfInputRouter>();
 
         // ViewModels
         services.AddSingleton<AppManagerViewModel>();
+        services.AddSingleton<WeatherViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // Views
