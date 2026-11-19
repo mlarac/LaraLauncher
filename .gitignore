@@ -1,0 +1,14 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+TestResults/
+publish/
+installer/Output/
+
+# Logs and local data
+*.log
