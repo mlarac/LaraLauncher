@@ -7,6 +7,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>LaraLauncher</AssemblyName>
+    <Version>1.0.0</Version>
+    <Product>LaraLauncher</Product>
+    <Authors>Marcelo Lara</Authors>
+    <Description>10-Foot Roku-style Desktop Launcher for Windows with keyboard, remote, and XInput gamepad support.</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly WpfInputRouter _inputRouter;
     private readonly IAppLauncherService _appLauncherService;
     private readonly XInputGamepadProvider _gamepadProvider;
+    private readonly INavigationSoundService _soundService;
 
     private bool _isFullscreen = true;
     private bool _cliForceWindowed;
@@ -28,7 +29,8 @@ public partial class MainWindow : Window
         MainViewModel viewModel,
         WpfInputRouter inputRouter,
         IAppLauncherService appLauncherService,
-        XInputGamepadProvider gamepadProvider)
+        XInputGamepadProvider gamepadProvider,
+        INavigationSoundService soundService)
     {
         InitializeComponent();
 
@@ -36,6 +38,7 @@ public partial class MainWindow : Window
         _inputRouter = inputRouter;
         _appLauncherService = appLauncherService;
         _gamepadProvider = gamepadProvider;
+        _soundService = soundService;
         DataContext = _viewModel;
 
         _inputRouter.ActionReceived += OnNavigationActionReceived;
@@ -60,8 +63,23 @@ public partial class MainWindow : Window
         _cliForceWindowed = forceWindowed;
     }
 
+    public void RestoreAndActivate()
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = _isFullscreen ? WindowState.Maximized : WindowState.Normal;
+        }
+
+        Show();
+        Activate();
+        Topmost = true;
+        Topmost = false;
+        Focus();
+    }
+
     private void OnRuntimePreferencesUpdated(object? sender, LauncherSettings settings)
     {
+        _soundService.IsEnabled = settings.EnableNavigationSounds;
         _gamepadProvider.IsEnabled = settings.EnableGamepad;
         if (settings.EnableGamepad && IsActive)
         {
@@ -83,6 +101,27 @@ public partial class MainWindow : Window
         else if (_isFullscreen != settings.StartFullscreen)
         {
             ApplyWindowMode(settings.StartFullscreen);
+        }
+    }
+
+    private void PlayFeedbackSound(NavigationAction action)
+    {
+        switch (action)
+        {
+            case NavigationAction.Up:
+            case NavigationAction.Down:
+            case NavigationAction.Left:
+            case NavigationAction.Right:
+                _soundService.PlayMove();
+                break;
+            case NavigationAction.Select:
+            case NavigationAction.ContextMenu:
+                _soundService.PlaySelect();
+                break;
+            case NavigationAction.Back:
+            case NavigationAction.Home:
+                _soundService.PlayBack();
+                break;
         }
     }
 
@@ -203,6 +242,8 @@ public partial class MainWindow : Window
 
     private void HandleNavigationAction(NavigationAction action)
     {
+        PlayFeedbackSound(action);
+
         if (_viewModel.IsExitDialogVisible)
         {
             HandleExitDialogNavigation(action);

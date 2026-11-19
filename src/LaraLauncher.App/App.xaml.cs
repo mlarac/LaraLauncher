@@ -1,9 +1,11 @@
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Threading;
 using LaraLauncher.App.Input;
 using LaraLauncher.App.ViewModels;
 using LaraLauncher.Core.Interfaces;
 using LaraLauncher.Core.Services;
+using LaraLauncher.Infrastructure.Audio;
 using LaraLauncher.Infrastructure.Input;
 using LaraLauncher.Infrastructure.Persistence;
 using LaraLauncher.Infrastructure.Weather;
@@ -15,13 +17,29 @@ namespace LaraLauncher.App;
 public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
+    private SingleInstanceGuard? _singleInstanceGuard;
+    private IAppLogger? _logger;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
+        _logger = new FileAppLogger();
+        RegisterGlobalExceptionHandlers();
+
+        _singleInstanceGuard = new SingleInstanceGuard();
+        if (!_singleInstanceGuard.IsPrimaryInstance)
+        {
+            _logger.LogInfo("Second instance detected; signaling primary instance and exiting.");
+            _singleInstanceGuard.SignalPrimaryInstance();
+            Shutdown();
+            return;
+        }
+
+        _logger.LogInfo("Starting LaraLauncher...");
+
         var services = new ServiceCollection();
-        ConfigureServices(services);
+        ConfigureServices(services, _logger);
         _serviceProvider = services.BuildServiceProvider();
 
         bool forceWindowed = e.Args.Any(arg =>
@@ -31,11 +49,22 @@ public partial class App : Application
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.ConfigureStartupWindowOverride(forceWindowed);
         mainWindow.ApplyWindowMode(!forceWindowed);
+
+        _singleInstanceGuard.SecondInstanceSignaled += (_, _) =>
+        {
+            Dispatcher.BeginInvoke(mainWindow.RestoreAndActivate);
+        };
+        _singleInstanceGuard.StartListeningForSecondInstances();
+
         mainWindow.Show();
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    private static void ConfigureServices(IServiceCollection services, IAppLogger logger)
     {
+        // Logging & Audio
+        services.AddSingleton(logger);
+        services.AddSingleton<INavigationSoundService, NavigationSoundService>();
+
         // Persistence & Windows Infrastructure
         services.AddSingleton<IConfigRepository>(_ => new JsonConfigRepository());
         services.AddSingleton<IconCacheService>(_ => new IconCacheService());
@@ -68,8 +97,30 @@ public partial class App : Application
         services.AddSingleton<MainWindow>();
     }
 
+    private void RegisterGlobalExceptionHandlers()
+    {
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            _logger?.LogError("Unhandled AppDomain exception.", args.ExceptionObject as Exception);
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            _logger?.LogError("Unobserved task exception.", args.Exception);
+            args.SetObserved();
+        };
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        _logger?.LogError("Unhandled UI dispatcher exception.", e.Exception);
+        e.Handled = true;
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        _logger?.LogInfo("Shutting down LaraLauncher.");
+        _singleInstanceGuard?.Dispose();
         _serviceProvider?.Dispose();
         base.OnExit(e);
     }
