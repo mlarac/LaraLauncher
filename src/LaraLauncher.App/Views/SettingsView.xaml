@@ -1,0 +1,214 @@
+<UserControl x:Class="LaraLauncher.App.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Focusable="False">
+        <StackPanel Margin="12,0,12,24">
+
+            <!-- System & Startup -->
+            <TextBlock Text="Sistema y Arranque"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource RokuAccentBrightBrush}"
+                       Margin="4,0,0,10" />
+
+            <Button x:Name="StartupToggleButton"
+                    Style="{StaticResource RokuListRowButtonStyle}"
+                    Click="StartupToggleButton_Click"
+                    GotKeyboardFocus="RowControl_GotKeyboardFocus">
+                <DockPanel>
+                    <Border DockPanel.Dock="Right"
+                            CornerRadius="10"
+                            Padding="16,8"
+                            VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#2B2145" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding StartWithWindows}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource RokuAccentBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding StartWithWindowsBadge}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Iniciar automáticamente con Windows" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding StartupStatusHint}" FontSize="13" Foreground="{StaticResource RokuTextMutedBrush}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+
+            <Button x:Name="FullscreenToggleButton"
+                    Style="{StaticResource RokuListRowButtonStyle}"
+                    Click="FullscreenToggleButton_Click"
+                    GotKeyboardFocus="RowControl_GotKeyboardFocus">
+                <DockPanel>
+                    <Border DockPanel.Dock="Right"
+                            Background="#2B2145"
+                            BorderBrush="{StaticResource RokuAccentBrightBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,8"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StartFullscreenBadge}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Modo de ventana predeterminado" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Alterna entre pantalla completa tipo TV y modo ventana (también puedes usar F11)." FontSize="13" Foreground="{StaticResource RokuTextMutedBrush}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+
+            <!-- Controls & Appearance -->
+            <TextBlock Text="Controles, Clima y Pantalla"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource RokuAccentBrightBrush}"
+                       Margin="4,22,0,10" />
+
+            <Button x:Name="GamepadToggleButton"
+                    Style="{StaticResource RokuListRowButtonStyle}"
+                    Click="GamepadToggleButton_Click"
+                    GotKeyboardFocus="RowControl_GotKeyboardFocus">
+                <DockPanel>
+                    <Border DockPanel.Dock="Right"
+                            CornerRadius="10"
+                            Padding="16,8"
+                            VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#2B2145" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EnableGamepad}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource RokuAccentBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding EnableGamepadBadge}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Soporte de mando / Gamepad (XInput)" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="D-Pad / Stick: Navegar  •  A: Abrir  •  B: Atrás  •  Y/Start: Opciones (se pausa al abrir juegos)." FontSize="13" Foreground="{StaticResource RokuTextMutedBrush}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+
+            <Button x:Name="TempUnitButton"
+                    Style="{StaticResource RokuListRowButtonStyle}"
+                    Click="TempUnitButton_Click"
+                    GotKeyboardFocus="RowControl_GotKeyboardFocus">
+                <DockPanel>
+                    <Border DockPanel.Dock="Right"
+                            Background="#2B2145"
+                            BorderBrush="{StaticResource RokuAccentBrightBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,8"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TemperatureUnitBadge}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Unidad de temperatura del clima" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Cambia instantáneamente el encabezado y el pronóstico de los próximos 7 días." FontSize="13" Foreground="{StaticResource RokuTextMutedBrush}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+
+            <Button x:Name="GridColumnsButton"
+                    Style="{StaticResource RokuListRowButtonStyle}"
+                    Click="GridColumnsButton_Click"
+                    GotKeyboardFocus="RowControl_GotKeyboardFocus">
+                <DockPanel>
+                    <Border DockPanel.Dock="Right"
+                            Background="#2B2145"
+                            BorderBrush="{StaticResource RokuAccentBrightBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,8"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding GridColumnsBadge}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Columnas en la grilla de Inicio" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Ajusta el número de tarjetas por fila (3 ideal para TV a distancia, 4 o 5 para pantallas grandes)." FontSize="13" Foreground="{StaticResource RokuTextMutedBrush}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+
+            <Button x:Name="SoundsToggleButton"
+                    Style="{StaticResource RokuListRowButtonStyle}"
+                    Click="SoundsToggleButton_Click"
+                    GotKeyboardFocus="RowControl_GotKeyboardFocus">
+                <DockPanel>
+                    <Border DockPanel.Dock="Right"
+                            CornerRadius="10"
+                            Padding="16,8"
+                            VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#2B2145" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EnableNavigationSounds}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource RokuAccentBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding EnableNavigationSoundsBadge}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Sonidos sutiles de navegación" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Feedback auditivo suave al moverse o seleccionar tarjetas estilo Roku." FontSize="13" Foreground="{StaticResource RokuTextMutedBrush}" Margin="0,3,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+
+            <!-- Power & Energy Actions -->
+            <TextBlock Text="Energía y Sistema"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource RokuAccentBrightBrush}"
+                       Margin="4,22,0,12" />
+
+            <WrapPanel Orientation="Horizontal">
+                <Button x:Name="PowerExitButton"
+                        Content="Salir al escritorio"
+                        Style="{StaticResource RokuActionButtonStyle}"
+                        FontSize="15"
+                        Margin="0,0,12,10"
+                        Click="PowerExitButton_Click"
+                        GotKeyboardFocus="RowControl_GotKeyboardFocus" />
+                <Button x:Name="PowerSleepButton"
+                        Content="Suspender PC"
+                        Style="{StaticResource RokuActionButtonStyle}"
+                        FontSize="15"
+                        Margin="0,0,12,10"
+                        Click="PowerSleepButton_Click"
+                        GotKeyboardFocus="RowControl_GotKeyboardFocus" />
+                <Button x:Name="PowerRestartButton"
+                        Content="Reiniciar PC"
+                        Style="{StaticResource RokuActionButtonStyle}"
+                        FontSize="15"
+                        Margin="0,0,12,10"
+                        Click="PowerRestartButton_Click"
+                        GotKeyboardFocus="RowControl_GotKeyboardFocus" />
+                <Button x:Name="PowerShutdownButton"
+                        Content="Apagar PC"
+                        Style="{StaticResource RokuActionButtonStyle}"
+                        FontSize="15"
+                        Margin="0,0,0,10"
+                        Click="PowerShutdownButton_Click"
+                        GotKeyboardFocus="RowControl_GotKeyboardFocus" />
+            </WrapPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

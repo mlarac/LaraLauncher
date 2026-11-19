@@ -7,44 +7,88 @@ using LaraLauncher.App.ViewModels;
 using LaraLauncher.Core.Interfaces;
 using LaraLauncher.Core.Models;
 using LaraLauncher.Core.Services;
+using LaraLauncher.Infrastructure.Input;
 
 namespace LaraLauncher.App;
 
 public partial class MainWindow : Window
 {
-    private const int TileColumns = 3;
-
     private readonly MainViewModel _viewModel;
     private readonly WpfInputRouter _inputRouter;
     private readonly IAppLauncherService _appLauncherService;
+    private readonly XInputGamepadProvider _gamepadProvider;
 
     private bool _isFullscreen = true;
+    private bool _cliForceWindowed;
+    private bool _hasAppliedInitialWindowPref;
     private int _lastFocusedTileIndex;
     private int _focusedSidebarIndex;
 
     public MainWindow(
         MainViewModel viewModel,
         WpfInputRouter inputRouter,
-        IAppLauncherService appLauncherService)
+        IAppLauncherService appLauncherService,
+        XInputGamepadProvider gamepadProvider)
     {
         InitializeComponent();
 
         _viewModel = viewModel;
         _inputRouter = inputRouter;
         _appLauncherService = appLauncherService;
+        _gamepadProvider = gamepadProvider;
         DataContext = _viewModel;
 
         _inputRouter.ActionReceived += OnNavigationActionReceived;
         _appLauncherService.ApplicationLaunched += OnExternalAppLaunched;
         _appLauncherService.ApplicationExited += OnExternalAppExited;
+        _viewModel.RuntimePreferencesUpdated += OnRuntimePreferencesUpdated;
+        _viewModel.Settings.PowerActionRequested += OnPowerActionRequested;
 
         Closed += (_, _) =>
         {
             _inputRouter.ActionReceived -= OnNavigationActionReceived;
             _appLauncherService.ApplicationLaunched -= OnExternalAppLaunched;
             _appLauncherService.ApplicationExited -= OnExternalAppExited;
+            _viewModel.RuntimePreferencesUpdated -= OnRuntimePreferencesUpdated;
+            _viewModel.Settings.PowerActionRequested -= OnPowerActionRequested;
             _inputRouter.StopExternalProviders();
         };
+    }
+
+    public void ConfigureStartupWindowOverride(bool forceWindowed)
+    {
+        _cliForceWindowed = forceWindowed;
+    }
+
+    private void OnRuntimePreferencesUpdated(object? sender, LauncherSettings settings)
+    {
+        _gamepadProvider.IsEnabled = settings.EnableGamepad;
+        if (settings.EnableGamepad && IsActive)
+        {
+            _inputRouter.StartExternalProviders();
+        }
+        else if (!settings.EnableGamepad)
+        {
+            _inputRouter.StopExternalProviders();
+        }
+
+        if (!_hasAppliedInitialWindowPref)
+        {
+            _hasAppliedInitialWindowPref = true;
+            if (!_cliForceWindowed)
+            {
+                ApplyWindowMode(settings.StartFullscreen);
+            }
+        }
+        else if (_isFullscreen != settings.StartFullscreen)
+        {
+            ApplyWindowMode(settings.StartFullscreen);
+        }
+    }
+
+    private void OnPowerActionRequested(object? sender, PowerActionKind action)
+    {
+        Dispatcher.BeginInvoke(() => CancelExitButton.Focus());
     }
 
     public void ApplyWindowMode(bool fullscreen)
@@ -204,6 +248,10 @@ public partial class MainWindow : Window
         {
             _ = WeatherDetailViewControl.HandleNavigationActionAsync(action);
         }
+        else if (_viewModel.IsSettingsSection)
+        {
+            SettingsViewControl.HandleNavigationAction(action);
+        }
         else if (action is NavigationAction.Left or NavigationAction.Back)
         {
             FocusSidebarForActiveSection();
@@ -226,7 +274,7 @@ public partial class MainWindow : Window
             case NavigationAction.Select:
                 if (ConfirmExitButton.IsKeyboardFocused)
                 {
-                    Application.Current.Shutdown();
+                    ExecuteConfirmedPowerAction();
                 }
                 else
                 {
@@ -394,7 +442,7 @@ public partial class MainWindow : Window
             case NavigationAction.Down:
             case NavigationAction.Left:
             case NavigationAction.Right:
-                var result = GridNavigator.Move(_lastFocusedTileIndex, tileCount, TileColumns, action);
+                var result = GridNavigator.Move(_lastFocusedTileIndex, tileCount, _viewModel.GridColumns, action);
                 if (result.ExitToSidebar)
                 {
                     FocusSidebarForActiveSection();
@@ -433,7 +481,7 @@ public partial class MainWindow : Window
             case NavigationAction.Down:
             case NavigationAction.Left:
             case NavigationAction.Right:
-                var result = GridNavigator.Move(_lastFocusedTileIndex, tileCount, TileColumns, action);
+                var result = GridNavigator.Move(_lastFocusedTileIndex, tileCount, _viewModel.GridColumns, action);
                 if (!result.ExitToSidebar && result.NewIndex >= 0 && result.NewIndex != _lastFocusedTileIndex)
                 {
                     int targetIndex = result.NewIndex;
@@ -466,6 +514,10 @@ public partial class MainWindow : Window
         else if (_viewModel.IsWeatherSection)
         {
             WeatherDetailViewControl.FocusPrimaryControl();
+        }
+        else if (_viewModel.IsSettingsSection)
+        {
+            SettingsViewControl.FocusPrimaryControl();
         }
     }
 
@@ -518,6 +570,10 @@ public partial class MainWindow : Window
         else if (section == SidebarSection.Weather)
         {
             Dispatcher.BeginInvoke(() => WeatherDetailViewControl.FocusPrimaryControl());
+        }
+        else if (section == SidebarSection.Settings)
+        {
+            Dispatcher.BeginInvoke(() => SettingsViewControl.FocusPrimaryControl());
         }
     }
 
@@ -642,8 +698,24 @@ public partial class MainWindow : Window
     private void WeatherDetailView_ExitToSidebarRequested(object? sender, EventArgs e)
         => FocusSidebarForActiveSection();
 
+    private void SettingsView_ExitToSidebarRequested(object? sender, EventArgs e)
+        => FocusSidebarForActiveSection();
+
     private void WeatherHeaderPill_Click(object sender, RoutedEventArgs e)
         => ActivateSidebarSection(SidebarSection.Weather);
+
+    private void ExecuteConfirmedPowerAction()
+    {
+        bool shouldExitApp = _viewModel.ExecutePendingPowerAction();
+        if (shouldExitApp)
+        {
+            Application.Current.Shutdown();
+        }
+        else
+        {
+            FocusSidebarForActiveSection();
+        }
+    }
 
     private async void EmptyAddStarterButton_Click(object sender, RoutedEventArgs e)
         => await AddStarterAppsAndFocusGridAsync();
@@ -668,7 +740,7 @@ public partial class MainWindow : Window
     private void EditCancelButton_Click(object sender, RoutedEventArgs e) => CancelEditDialogAndRestoreFocus();
 
     private void CancelExitButton_Click(object sender, RoutedEventArgs e) => CloseExitDialog();
-    private void ConfirmExitButton_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
+    private void ConfirmExitButton_Click(object sender, RoutedEventArgs e) => ExecuteConfirmedPowerAction();
 
     private bool IsFocusInSidebar()
     {

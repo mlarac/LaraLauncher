@@ -199,7 +199,7 @@
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid x:Name="TileUniformGrid"
-                                         Columns="3"
+                                         Columns="{Binding DataContext.GridColumns, RelativeSource={RelativeSource AncestorType=Window}}"
                                          HorizontalAlignment="Left"
                                          VerticalAlignment="Top" />
                         </ItemsPanelTemplate>
@@ -334,27 +334,12 @@
                                      Visibility="{Binding DataContext.IsWeatherSection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
                                      ExitToSidebarRequested="WeatherDetailView_ExitToSidebarRequested" />
 
-            <!-- Settings Placeholder (Phase 5) -->
-            <Border Grid.Row="2"
-                    Visibility="{Binding IsSettingsSection, Converter={StaticResource BoolToVisibility}}"
-                    Background="#1F143B"
-                    BorderBrush="{StaticResource RokuSubtleBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    Padding="36"
-                    Margin="12"
-                    VerticalAlignment="Top">
-                <StackPanel>
-                    <TextBlock Text="Ajustes del Sistema — Próximamente en Fase 5"
-                               FontSize="24"
-                               FontWeight="Bold" />
-                    <TextBlock Text="Aquí podrás activar el inicio automático con Windows, elegir tu ciudad y unidades (°C/°F), configurar soporte para mandos XInput y personalizar la apariencia."
-                               FontSize="16"
-                               Foreground="{StaticResource RokuTextMutedBrush}"
-                               TextWrapping="Wrap"
-                               Margin="0,12,0,0" />
-                </StackPanel>
-            </Border>
+            <!-- System Settings & Power Section (Phase 5) -->
+            <views:SettingsView x:Name="SettingsViewControl"
+                                Grid.Row="2"
+                                DataContext="{Binding Settings}"
+                                Visibility="{Binding DataContext.IsSettingsSection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
+                                ExitToSidebarRequested="SettingsView_ExitToSidebarRequested" />
 
             <!-- Status Toast Notification -->
             <Border Grid.Row="2"
@@ -535,13 +520,15 @@
                     <DropShadowEffect Color="#000000" BlurRadius="35" ShadowDepth="0" Opacity="0.7" />
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock Text="¿Salir de LaraLauncher?"
+                    <TextBlock Text="{Binding PowerDialogTitle}"
                                FontSize="26"
                                FontWeight="Bold"
                                HorizontalAlignment="Center" />
-                    <TextBlock Text="Volverás al escritorio de Windows."
+                    <TextBlock Text="{Binding PowerDialogSubtitle}"
                                FontSize="16"
                                Foreground="{StaticResource RokuTextMutedBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
                                HorizontalAlignment="Center"
                                Margin="0,10,0,28" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -551,7 +538,7 @@
                                 Margin="0,0,16,0"
                                 Click="CancelExitButton_Click" />
                         <Button x:Name="ConfirmExitButton"
-                                Content="Salir"
+                                Content="{Binding PowerDialogConfirmText}"
                                 Style="{StaticResource RokuActionButtonStyle}"
                                 Click="ConfirmExitButton_Click" />
                     </StackPanel>

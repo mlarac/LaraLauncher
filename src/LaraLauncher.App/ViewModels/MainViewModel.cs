@@ -13,15 +13,20 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IConfigRepository _configRepository;
     private readonly IAppLauncherService _appLauncherService;
+    private readonly ISystemPowerService _powerService;
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _toastTimer;
 
     private LauncherConfig _config = new();
+    private PowerActionKind _pendingPowerAction = PowerActionKind.ExitToDesktop;
 
     public AppManagerViewModel AppManager { get; }
     public WeatherViewModel Weather { get; }
+    public SettingsViewModel Settings { get; }
     public ObservableCollection<SidebarItemViewModel> SidebarItems { get; }
     public ObservableCollection<AppTile> AppTiles { get; }
+
+    public event EventHandler<LauncherSettings>? RuntimePreferencesUpdated;
 
     public IReadOnlyList<string> AccentSwatches { get; } =
     [
@@ -56,6 +61,18 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isExitDialogVisible;
+
+    [ObservableProperty]
+    private string _powerDialogTitle = "¿Salir de LaraLauncher?";
+
+    [ObservableProperty]
+    private string _powerDialogSubtitle = "Volverás al escritorio de Windows.";
+
+    [ObservableProperty]
+    private string _powerDialogConfirmText = "Salir";
+
+    [ObservableProperty]
+    private int _gridColumns = 3;
 
     [ObservableProperty]
     private bool _isLaunchingApp;
@@ -99,15 +116,21 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         IConfigRepository configRepository,
         IAppLauncherService appLauncherService,
+        ISystemPowerService powerService,
         AppManagerViewModel appManager,
-        WeatherViewModel weather)
+        WeatherViewModel weather,
+        SettingsViewModel settings)
     {
         _configRepository = configRepository;
         _appLauncherService = appLauncherService;
+        _powerService = powerService;
         AppManager = appManager;
         Weather = weather;
+        Settings = settings;
 
         Weather.LocationSelected += OnWeatherLocationSelected;
+        Settings.SettingsChanged += OnSettingsChanged;
+        Settings.PowerActionRequested += OnPowerActionRequested;
 
         SidebarItems = new ObservableCollection<SidebarItemViewModel>
         {
@@ -142,8 +165,60 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task InitializeAsync()
     {
         _config = await _configRepository.LoadAsync();
+        GridColumns = Math.Clamp(_config.Settings.GridColumns, 3, 5);
+        Settings.LoadFromSettings(_config.Settings);
+        RuntimePreferencesUpdated?.Invoke(this, _config.Settings);
         SyncAppTilesFromConfig();
         _ = Weather.InitializeFromSettingsAsync(_config.Settings);
+    }
+
+    private async void OnSettingsChanged(object? sender, LauncherSettings updated)
+    {
+        Settings.ApplyToSettings(_config.Settings);
+        GridColumns = Math.Clamp(_config.Settings.GridColumns, 3, 5);
+        Weather.UpdateTemperatureUnit(_config.Settings.TemperatureUnit);
+        RuntimePreferencesUpdated?.Invoke(this, _config.Settings);
+        await SaveConfigAsync();
+        ShowToast("Ajustes guardados.");
+    }
+
+    private void OnPowerActionRequested(object? sender, PowerActionKind action)
+    {
+        OpenPowerDialog(action);
+    }
+
+    public void OpenPowerDialog(PowerActionKind action)
+    {
+        _pendingPowerAction = action;
+        (PowerDialogTitle, PowerDialogSubtitle, PowerDialogConfirmText) = action switch
+        {
+            PowerActionKind.Sleep => ("¿Suspender el equipo?", "Windows entrará en modo suspensión.", "Suspender"),
+            PowerActionKind.Restart => ("¿Reiniciar el equipo?", "Se cerrarán las aplicaciones abiertas y el PC se reiniciará.", "Reiniciar"),
+            PowerActionKind.Shutdown => ("¿Apagar el equipo?", "Se cerrarán las aplicaciones abiertas y el PC se apagará.", "Apagar"),
+            _ => ("¿Salir de LaraLauncher?", "Volverás al escritorio de Windows.", "Salir")
+        };
+
+        IsExitDialogVisible = true;
+    }
+
+    public bool ExecutePendingPowerAction()
+    {
+        IsExitDialogVisible = false;
+
+        switch (_pendingPowerAction)
+        {
+            case PowerActionKind.Sleep:
+                _powerService.Sleep();
+                return false;
+            case PowerActionKind.Restart:
+                _powerService.Restart();
+                return false;
+            case PowerActionKind.Shutdown:
+                _powerService.Shutdown();
+                return false;
+            default:
+                return true; // Caller shuts down WPF application
+        }
     }
 
     private async void OnWeatherLocationSelected(object? sender, GeoLocation location)
@@ -176,7 +251,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (section == SidebarSection.Exit)
         {
-            IsExitDialogVisible = true;
+            OpenPowerDialog(PowerActionKind.ExitToDesktop);
             return;
         }
 
